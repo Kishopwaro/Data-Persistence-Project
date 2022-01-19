@@ -12,20 +12,28 @@ public class MainManager : MonoBehaviour
 
     public Text ScoreText;
     public GameObject GameOverText;
-    
+
     private bool m_Started = false;
     private int m_Points;
-    
+
     private bool m_GameOver = false;
 
-    
+    [SerializeField] private Button restartButton;
+    [SerializeField] private Button backToStartMenuButton;
+    [SerializeField] private Button resumeButton;
+    [SerializeField] private Text pauseText;
+    [SerializeField] private Text highscoreText;
+
+    private bool isPaused = false;
+
+
     // Start is called before the first frame update
     void Start()
     {
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
-        
-        int[] pointCountArray = new [] {1,1,2,2,5,5};
+
+        int[] pointCountArray = new[] { 1, 1, 2, 2, 5, 5 };
         for (int i = 0; i < LineCount; ++i)
         {
             for (int x = 0; x < perLine; ++x)
@@ -36,31 +44,55 @@ public class MainManager : MonoBehaviour
                 brick.onDestroyed.AddListener(AddPoint);
             }
         }
+
+        SetHighScoreOnStart();
     }
 
     private void Update()
     {
-        if (!m_Started)
+        if (!isPaused)
         {
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (!m_Started)
             {
-                m_Started = true;
-                float randomDirection = Random.Range(-1.0f, 1.0f);
-                Vector3 forceDir = new Vector3(randomDirection, 1, 0);
-                forceDir.Normalize();
+                if (Input.GetKeyDown(KeyCode.Space))
+                {
+                    m_Started = true;
+                    float randomDirection = Random.Range(-1.0f, 1.0f);
+                    Vector3 forceDir = new Vector3(randomDirection, 1, 0);
+                    forceDir.Normalize();
 
-                Ball.transform.SetParent(null);
-                Ball.AddForce(forceDir * 2.0f, ForceMode.VelocityChange);
+                    Ball.transform.SetParent(null);
+                    Ball.AddForce(forceDir * 2.0f, ForceMode.VelocityChange);
+                }
+
             }
-        }
-        else if (m_GameOver)
-        {
-            if (Input.GetKeyDown(KeyCode.Space))
+            else if (m_GameOver)
             {
-                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                if (Input.GetKeyDown(KeyCode.Space))
+                {
+                    RestartGame();
+                }
+            }
+            else if (m_Started && !m_GameOver)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    PauseGame();
+                    isPaused = true;
+                }
             }
         }
+        else
+        {
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                ResumeGame();
+            }
+        }
+
     }
+
+
 
     void AddPoint(int point)
     {
@@ -72,5 +104,62 @@ public class MainManager : MonoBehaviour
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+        backToStartMenuButton.gameObject.SetActive(true);
+        restartButton.gameObject.SetActive(true);
+        if (m_Points > DataBetweenScenes.Instance.highScore)
+        {
+            UpdateHighScore(m_Points);
+        }
     }
+
+    private void PauseGame()
+    {
+        Time.timeScale = 0;
+        pauseText.gameObject.SetActive(true);
+        backToStartMenuButton.gameObject.SetActive(true);
+        restartButton.gameObject.SetActive(true);
+        resumeButton.gameObject.SetActive(true);
+    }
+
+    public void ResumeGame()
+    {
+        Time.timeScale = 1;
+        isPaused = false;
+        pauseText.gameObject.SetActive(false);
+        backToStartMenuButton.gameObject.SetActive(false);
+        restartButton.gameObject.SetActive(false);
+        resumeButton.gameObject.SetActive(false);
+    }
+
+    public void BackToMenu()
+    {
+        Time.timeScale = 1;
+        SceneManager.LoadScene(0);
+    }
+
+    public void RestartGame()
+    {
+        if (isPaused)
+        {
+            Time.timeScale = 1;
+            isPaused = false;
+        }
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    private void UpdateHighScore(int highScore)
+    {
+        DataBetweenScenes.Instance.highScoreNameText = DataBetweenScenes.Instance.nameText;
+        highscoreText.text = "Best Score: " + DataBetweenScenes.Instance.highScoreNameText + ": " + highScore;
+        DataBetweenScenes.Instance.highScore = highScore;
+    }
+
+    private void SetHighScoreOnStart()
+    {
+        if (DataBetweenScenes.Instance.highScore > 0)
+        {
+            highscoreText.text = "Best Score: " + DataBetweenScenes.Instance.highScoreNameText + ": " + DataBetweenScenes.Instance.highScore;
+        }
+    }
+
 }
